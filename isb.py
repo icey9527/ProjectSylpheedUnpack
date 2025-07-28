@@ -19,7 +19,7 @@ class ISBCodec:
     MARKER_NUMBER = 0x40403
     MARKER_TEXT = 0x40400
     KEY_THRESHOLD = 0x3000001
-    MAX_TEXT_LENGTH = 0x3f *2
+    MAX_TEXT_LENGTH = 0x3f * 4
     
     @staticmethod
     def ror3(x: int) -> int:
@@ -407,6 +407,7 @@ class ISBEncoder:
                         encoded_words = self.codec.encode_text(text_data, current_key)
                         buffer.extend(encoded_words)
                     else:
+                        print(text_data.decode('utf-8'))
                         print(f"警告: 文本长度 {text_length} 超过限制，跳过")
                 
                 else:  # hex

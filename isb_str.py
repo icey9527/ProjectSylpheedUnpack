@@ -77,7 +77,7 @@ def write_back_txt(original_txt_path, json_path, output_txt_path):
                 after = lines[text_line_idx+1+old_count:]
                 lines = before + translation_lines + after
                 break
-        return key + '\n' + '\n'.join(lines)
+        return key +  '\n'.join(lines)
 
     pattern = re.compile(r'(@[0-9a-fA-F]+)(.*?)(?=\n@|\Z)', re.DOTALL)
     new_content = pattern.sub(replace_block, content)

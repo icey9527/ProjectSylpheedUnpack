@@ -9,19 +9,33 @@ def parse_blocks(file_content):
     for match in pattern.finditer(file_content):
         key = match.group(1)
         block = match.group(2)
-        if '#c5684308' not in block:
+        
+        # 检查两种关键字符
+        if '#c5684308' not in block and '#3dd1ee22' not in block:
             continue
+            
         lines = block.splitlines()
         text_lines = []
         text_line_count = 0
+        
         for i, line in enumerate(lines):
+            # 处理第一种格式 #c5684308
             if '#c5684308' in line:
                 try:
                     text_line_count = int(lines[i+3].replace('+','').strip())
                     text_lines = lines[i+4:i+4+text_line_count]
                 except Exception as e:
-                    print(f"解析错误: {e}")
+                    print(f"解析错误 (c5684308): {e}")
                 break
+            # 处理第二种格式 #3dd1ee22
+            elif '#3dd1ee22' in line:
+                try:
+                    text_line_count = int(lines[i+1].replace('+','').strip())
+                    text_lines = lines[i+2:i+2+text_line_count]
+                except Exception as e:
+                    print(f"解析错误 (3dd1ee22): {e}")
+                break
+                
         original = '\\n'.join(text_lines)
         blocks.append({
             "key": key,
@@ -44,7 +58,14 @@ def batch_parse_folder(input_folder, output_folder):
             json.dump(blocks, f, ensure_ascii=False, indent=2)
         print(f"提取完成: {filename} -> {outname}")
 
-
+def to_fullwidth(text):
+    """
+    把半角字符转成全角字符
+    """
+    return text.translate(str.maketrans(
+        ''.join([chr(i) for i in range(0x21, 0x7F)]),
+        ''.join([chr(i + 0xFEE0) for i in range(0x21, 0x7F)])
+    ))
 
 def write_back_txt(original_txt_path, json_path, output_txt_path):
     with open(original_txt_path, 'r', encoding='utf-8') as f:
@@ -59,32 +80,50 @@ def write_back_txt(original_txt_path, json_path, output_txt_path):
             return key + block
         trans = translations[key]
         lines = block.splitlines()
+        
         for i, line in enumerate(lines):
+            # 处理第一种格式 #c5684308
             if '#c5684308' in line:
                 text_line_idx = i + 3
                 if text_line_idx >= len(lines):
-                    return key + block  # 防止越界
+                    return key + block
                 try:
                     old_count = int(lines[text_line_idx].replace('+','').strip())
                 except:
                     return key + block
-                # 取译文，没有就用原文
+                    
                 translation_lines = trans['translation'].replace('\\n', '\n').split('\n') if trans['translation'].strip() else trans['original'].replace('\\n', '\n').split('\n')
-                # 更新行数
                 lines[text_line_idx] = '+{:8d}'.format(len(translation_lines))
-                # 拼接新内容
+                
                 before = lines[:text_line_idx+1]
                 after = lines[text_line_idx+1+old_count:]
                 lines = before + translation_lines + after
                 break
-        return key +  '\n'.join(lines)
+                
+            # 处理第二种格式 #3dd1ee22
+            elif '#3dd1ee22' in line:
+                text_line_idx = i + 1
+                if text_line_idx >= len(lines):
+                    return key + block
+                try:
+                    old_count = int(lines[text_line_idx].replace('+','').strip())
+                except:
+                    return key + block
+                    
+                translation_lines = trans['translation'].replace('\\n', '\n').split('\n') if trans['translation'].strip() else trans['original'].replace('\\n', '\n').split('\n')
+                lines[text_line_idx] = '+{:8d}'.format(len(translation_lines))
+                
+                before = lines[:text_line_idx+1]
+                after = lines[text_line_idx+1+old_count:]
+                lines = before + translation_lines + after
+                break
+                
+        return key + '\n'.join(lines)
 
     pattern = re.compile(r'(@[0-9a-fA-F]+)(.*?)(?=\n@|\Z)', re.DOTALL)
     new_content = pattern.sub(replace_block, content)
     with open(output_txt_path, 'w', encoding='utf-8') as f:
         f.write(new_content)
-
-
 
 def batch_write_back(input_folder, json_folder, output_folder):
     os.makedirs(output_folder, exist_ok=True)
